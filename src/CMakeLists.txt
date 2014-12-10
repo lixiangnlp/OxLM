@@ -28,11 +28,22 @@ set(THIRD_PARTY ${PROJECT_SOURCE_DIR}/third_party)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.45.0 COMPONENTS
+find_package(Boost COMPONENTS
   date_time filesystem program_options serialization thread REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 # link_directories(${Boost_LIBRARY_DIRS})
 # set(link_libraries(train_cnlm ${Boost_LIBRARIES} cnlm)
+
+# Intel MKL
+set(env{MKL_INTERFACE_LAYER} "GNU,LP64")
+set(env{MKL_THREADING_LAYER} "GNU")
+set(MKL_LIBRARIES /opt/intel/mkl/lib/intel64)                                      
+set(MKL_INCLUDE_DIR /opt/intel/mkl/include)
+set(MKL_STATIC OFF)                                                              
+set(MKL_MULTI_THREADED ON)                                                       
+set(MKL_SDL ON)                                                                  
+add_definitions(-DEIGEN_USE_MKL_ALL)                                             
+find_package(MKL REQUIRED)  
 
 # OpenMP
 find_package(OpenMP QUIET)
@@ -41,7 +52,7 @@ find_package(OpenMP QUIET)
 find_package(Cdec QUIET)
 
 # Git
-find_package(Git REQUIRED)
+find_package(Git QUIET)
 
 #############################################
 # Hackery courtesy of Karl Moritz
@@ -99,7 +110,21 @@ endmacro()
 # Compiler Settings
 #############################################
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -O3")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+  if(GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  elseif(GCC_VERSION VERSION_GREATER 4.6 OR GCC_VERSION VERSION_EQUAL 4.6)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+  else()
+    message(FATAL_ERROR "Your GCC version is not supported. Please upgrade.")
+  endif()
+else()
+  message(FATAL_ERROR "Your compiler is currently not supported. Open an issue if you'd like us to support it or go ahead and do it yourself.")
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 add_subdirectory(lbl)
